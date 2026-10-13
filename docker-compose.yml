@@ -1,0 +1,16 @@
+﻿services:
+  api:
+    build: .
+    container_name: dean_office_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app_code
+      - db_data:/app_code/data
+    environment:
+      - JWT_SECRET_KEY=
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+    restart: unless-stopped
+
+volumes:
+  db_data:
