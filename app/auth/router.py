@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError
 from sqlalchemy.orm import Session
 
+from app.audit.detector import check_brute_force, check_off_hours_access
+from app.audit.logger import (get_client_ip, log_event, log_login_failed,
+                              log_login_success)
 from app.auth.dependencies import get_current_user
 from app.auth.jwt_handler import (create_access_token, create_refresh_token,
                                   verify_token)
@@ -39,21 +42,39 @@ def register(request: Request, user_data: UserCreate, db: Session = Depends(get_
     student_role = db.query(Role).filter(Role.name == "student").first()
     if student_role:
         new_user.roles.append(student_role)
-
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    log_event(db, "user_registered", "success", get_client_ip(request),
+              user_id=new_user.id, username=new_user.username,
+              http_method="POST", endpoint="/auth/register", status_code=201)
     return new_user
 
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")  # захист від brute force / credential stuffing
 def login(request: Request, credentials: LoginRequest, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+
+    # 1. Brute Force перевіряємо ДО перевірки пароля
+    if check_brute_force(db, ip, credentials.username):
+        log_login_failed(db, credentials.username, ip, reason="brute_force_blocked")
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Забагато невдалих спроб. Спробуйте через 5 хвилин.")
+
+    # 2. Однакова відповідь для «немає користувача» і «невірний пароль»
     user = db.query(User).filter(User.username == credentials.username).first()
     if not user or not verify_password(credentials.password, user.password_hash):
+        log_login_failed(db, credentials.username, ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Невірний логін або пароль")
+
     if not user.is_active:
+        log_login_failed(db, credentials.username, ip, reason="inactive")
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Акаунт деактивовано")
+
+    check_off_hours_access(db, user.id, user.username, ip)
+    log_login_success(db, user.id, user.username, ip)
     return TokenResponse(
         access_token=create_access_token(user.id, _primary_role(user)),
         refresh_token=create_refresh_token(user.id),
