@@ -1,15 +1,37 @@
-﻿services:
+services:
   api:
     build: .
     container_name: dean_office_api
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"      # API доступний лише локально; ззовні — через Nginx
     volumes:
-      - .:/app_code
-      - db_data:/app_code/data
+      - db_data:/app_code/data      # bind-mount коду прибрано: код лише в образі
     environment:
-      - JWT_SECRET_KEY=
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+      # Значення беруться з .env; без них compose зупиняється з помилкою
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY не задано в .env}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?ENCRYPTION_KEY не задано в .env}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY:?BLIND_INDEX_KEY не задано в .env}
+      - CORS_ORIGINS=http://localhost:3000,https://localhost
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

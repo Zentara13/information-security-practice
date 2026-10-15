@@ -9,3 +9,5 @@ python-jose[cryptography]==3.3.0
 python-multipart==0.0.9
 bleach==6.1.0
 slowapi==0.1.9
+cryptography==50.0.2
+tzdata==2024.2

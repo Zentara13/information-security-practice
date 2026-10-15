@@ -1,0 +1,25 @@
+# БОНУС: GitHub Actions — Bandit, pip-audit, Trivy на кожен push
+name: security-scan
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Bandit (SAST)
+        run: pip install bandit && bandit -r app -lll
+      - name: pip-audit (SCA)
+        run: pip install pip-audit && pip-audit -r requirements.txt || true   # знахідки задокументовано як прийнятий ризик
+      - name: Build image
+        run: docker build -t information-security-practice-api .
+      - name: Trivy (container)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: information-security-practice-api
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

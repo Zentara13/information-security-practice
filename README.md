@@ -96,3 +96,32 @@ docker compose exec api python -m app.seed
 4. **Робота механізму обмеження частоти запитів (`04-rate-limit`):**
 
 5. **Перевірка наявності захисних HTTP-заголовків (`05-headers`):**
+
+
+## Безпека
+
+Повний звіт аудиту: [SECURITY_AUDIT.md](SECURITY_AUDIT.md). Звіти сканерів — у теці `reports/`.
+
+### Запуск (з чистого клону)
+
+```bash
+cp .env.example .env                 # заповніть JWT_SECRET_KEY, ENCRYPTION_KEY, BLIND_INDEX_KEY
+                                     # openssl rand -hex 32  /  python -m scripts.generate_key
+./scripts/generate_cert.sh           # self-signed сертифікат для Nginx
+docker compose up -d --build
+docker compose exec api alembic upgrade head
+docker compose exec api python -m app.seed
+```
+
+API: https://localhost (HTTP 80 → 301 на HTTPS). Порт 8000 доступний лише з 127.0.0.1.
+
+### Перевірка безпеки
+
+```bash
+./scripts/security_check.sh          # → SECURITY CHECK PASSED
+./scripts/pentest_mini.sh            # 12 мінітестів на вразливості
+```
+
+### Шари захисту
+
+bcrypt + JWT · RBAC · Pydantic / bleach / CSP / CORS / rate limit · Fernet для email/phone + сліпий індекс · зашифровані бекапи · журнал аудиту 5W + виявлення Brute Force · non-root read-only контейнер за HTTPS · Trivy / pip-audit / Bandit.
