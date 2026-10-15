@@ -43,7 +43,7 @@ def root():
 @app.get("/health")
 def health():
     return {
-        "status": "healthy", 
+        "status": "200", 
         "database": "SQLite",
         "tables": len(Base.metadata.tables)
     }
