@@ -1,9 +1,11 @@
-﻿__pycache__/
+__pycache__/
 *.pyc
 .env
 data/
 *.db
+*.db.enc
 .venv/
 venv/
 .idea/
 .vscode/
+nginx/certs/

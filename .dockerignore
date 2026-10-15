@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+.venv/
+data/
+nginx/certs/
+reports/
+**/__pycache__
+*.pyc
+*.md
