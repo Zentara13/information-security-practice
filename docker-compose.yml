@@ -1,15 +1,19 @@
-﻿services:
+services:
   api:
     build: .
     container_name: dean_office_api
     ports:
       - "8000:8000"
     volumes:
-      - .:/app_code
-      - db_data:/app_code/data
+      - .:/app_code              # hot-reload коду
+      - db_data:/app_code/data   # персистентна БД SQLite
     environment:
-      - JWT_SECRET_KEY=
+      # Секрет береться з файлу .env (не в Git!); після ":-" — значення лише для розробки
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-secret-change-me}
       - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+      # ЗПР-2: ключі шифрування; без них compose зупиняється з помилкою
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?ENCRYPTION_KEY не задано в .env}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY:?BLIND_INDEX_KEY не задано в .env}
     restart: unless-stopped
 
 volumes:
